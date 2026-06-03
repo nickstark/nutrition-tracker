@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Daily Tracker</title>
+
+<!-- PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Tracker">
+<meta name="theme-color" content="#1a1812">
+<link rel="manifest" id="manifest-placeholder">
+<link rel="apple-touch-icon" id="touch-icon">
+
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -41,13 +50,14 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
-    padding: 0 0 60px;
+    min-height: 100dvh;
+    padding: 0 0 max(60px, calc(60px + env(safe-area-inset-bottom)));
   }
 
   header {
     background: var(--text);
     color: var(--bg);
-    padding: 20px 24px 18px;
+    padding: max(20px, calc(env(safe-area-inset-top) + 12px)) max(24px, env(safe-area-inset-right)) 18px max(24px, env(safe-area-inset-left));
     position: sticky;
     top: 0;
     z-index: 100;
@@ -769,6 +779,134 @@ openDB().then(() => {
   loadDate(today);
   updatePerfectDays();
 });
+
+// ─── PWA: inject manifest and register service worker ────────────────────────
+(function() {
+  // Generate apple-touch-icon as a canvas PNG
+  (function() {
+    const size = 180;
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+
+    // Background rounded rect
+    const r = 40;
+    ctx.fillStyle = '#1a1812';
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(size - r, 0);
+    ctx.quadraticCurveTo(size, 0, size, r);
+    ctx.lineTo(size, size - r);
+    ctx.quadraticCurveTo(size, size, size - r, size);
+    ctx.lineTo(r, size);
+    ctx.quadraticCurveTo(0, size, 0, size - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Subtle grid lines for "tracker" feel
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 30; i < size; i += 30) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, size); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(size, i); ctx.stroke();
+    }
+
+    // Checkmark
+    ctx.strokeStyle = '#2d5a27';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(38, 92);
+    ctx.lineTo(72, 128);
+    ctx.lineTo(142, 52);
+    ctx.stroke();
+
+    // Three horizontal "item" lines to the right of check
+    const lineX = 100;
+    const lineW = 52;
+    const lineY = [62, 90, 118];
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    lineY.forEach(y => {
+      ctx.beginPath();
+      ctx.moveTo(lineX, y);
+      ctx.lineTo(lineX + lineW, y);
+      ctx.stroke();
+    });
+
+    document.getElementById('touch-icon').setAttribute('href', c.toDataURL('image/png'));
+  })();
+
+
+  const iconDataUrl = document.getElementById('touch-icon').getAttribute('href');
+  const manifest = {
+    name: 'Daily Tracker',
+    short_name: 'Tracker',
+    start_url: './',
+    display: 'standalone',
+    background_color: '#1a1812',
+    theme_color: '#1a1812',
+    icons: [
+      { src: iconDataUrl, sizes: '180x180', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  document.getElementById('manifest-placeholder').setAttribute('href', url);
+
+  // Inline service worker as a blob for single-file PWA
+  const swCode = `
+    const CACHE = 'daily-tracker-v1';
+    const FONTS = [
+      'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap'
+    ];
+
+    self.addEventListener('install', e => {
+      e.waitUntil(
+        caches.open(CACHE).then(c => c.addAll(FONTS).catch(() => {}))
+      );
+      self.skipWaiting();
+    });
+
+    self.addEventListener('activate', e => {
+      e.waitUntil(
+        caches.keys().then(keys =>
+          Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+        )
+      );
+      self.clients.claim();
+    });
+
+    self.addEventListener('fetch', e => {
+      // Cache-first for font requests, network-first for everything else
+      if (e.request.url.includes('fonts.g')) {
+        e.respondWith(
+          caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+            return res;
+          }))
+        );
+      } else {
+        e.respondWith(
+          fetch(e.request).catch(() => caches.match(e.request))
+        );
+      }
+    });
+  `;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  const swUrl = URL.createObjectURL(swBlob);
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register(swUrl, { scope: './' }).catch(() => {
+      // SW registration may fail in some environments; app still works
+    });
+  }
+})();
 </script>
 </body>
 </html>
