@@ -462,7 +462,7 @@ const STORE = 'days';
 
 const ITEMS = [
   // Protein
-  { id:'protein', name:'30g+ protein meals', type:'multi', goal:3, tag:'protein', tagColor:'tag-protein' },
+  { id:'protein', name:'high protein meals', type:'multi', goal:3, tag:'protein', tagColor:'tag-protein' },
   // Legumes
   { id:'beans', name:'beans / legumes', type:'multi', goal:2, tag:'legume', tagColor:'tag-legume' },
   // Fruits
@@ -479,6 +479,8 @@ const ITEMS = [
   { id:'grains', name:'whole grains', type:'multi', goal:3, tag:'grain', tagColor:'tag-grain' },
   // Exercise
   { id:'exercise', name:'exercise', type:'single', tag:'fitness', tagColor:'tag-other' },
+  // Fermented
+  { id:'fermented', name:'fermented foods', type:'single', tag:'fermented', tagColor:'tag-supp' },
   // Supplements
   { id:'b12', name:'vitamin B12', type:'single', tag:'supp', tagColor:'tag-supp' },
   { id:'fishoil', name:'fish oil', type:'single', tag:'supp', tagColor:'tag-supp' },
@@ -492,6 +494,7 @@ const SECTIONS = [
   { label: 'Vegetables',       ids: ['cruciferous','greens','other_veg'] },
   { label: 'Seeds & Nuts',     ids: ['flax','nuts'] },
   { label: 'Whole Grains',     ids: ['grains'] },
+  { label: 'Fermented Foods',  ids: ['fermented'] },
   { label: 'Activity',         ids: ['exercise'] },
   { label: 'Supplements',      ids: ['b12','fishoil','fiber'] },
 ];
