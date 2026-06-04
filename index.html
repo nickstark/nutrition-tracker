@@ -401,6 +401,8 @@
   }
 
   .history-cell.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .history-cell.selected { outline: 2px solid var(--muted); outline-offset: 1px; }
+  .history-cell.today.selected { outline-color: var(--accent); }
 
   .footer-note {
     text-align: center;
@@ -441,11 +443,8 @@
 
   <div id="checklist"></div>
 
-  <div class="history-toggle" id="history-toggle">
-    <span class="history-toggle-label">30-day history</span>
-    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-  </div>
-  <div id="history-grid"></div>
+  <div class="history-toggle-label" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);padding:14px 0 10px;margin-top:28px;border-top:1px solid var(--border);display:block;">30-day history</div>
+  <div id="history-grid" class="visible"></div>
 
   <div class="footer-note">data stored locally · last 30 days kept</div>
 </main>
@@ -763,23 +762,17 @@ async function renderHistory() {
     const pct = total ? done / total : 0;
 
     const cell = document.createElement('div');
-    cell.className = 'history-cell' + (ds === today ? ' today' : '');
+    cell.className = 'history-cell' + (ds === today ? ' today' : '') + (ds === currentDate ? ' selected' : '');
     cell.title = `${ds}: ${done}/${total}`;
+    cell.style.cursor = 'pointer';
     cell.innerHTML = `
       <span class="h-day">${d.getDate()}</span>
       <div class="h-fill"><div class="h-fill-inner" style="width:${pct*100}%"></div></div>
     `;
+    cell.addEventListener('click', () => loadDate(ds));
     grid.appendChild(cell);
   });
 }
-
-document.getElementById('history-toggle').addEventListener('click', () => {
-  const toggle = document.getElementById('history-toggle');
-  const grid = document.getElementById('history-grid');
-  const open = toggle.classList.toggle('open');
-  grid.classList.toggle('visible', open);
-  if (open) renderHistory();
-});
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 openDB().then(() => {
