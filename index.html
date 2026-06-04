@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>Daily Tracker</title>
 
 <!-- PWA -->
@@ -44,6 +44,8 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { touch-action: manipulation; }
 
   body {
     font-family: 'DM Mono', monospace;
@@ -691,8 +693,9 @@ async function changeMulti(id, delta) {
 function formatDisplayDate(ds) {
   const d = new Date(ds + 'T12:00:00');
   if (ds === today) return 'today';
-  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
-  if (ds === dateStr(yesterday)) return 'yesterday';
+  const [y, m, day] = today.split('-').map(Number);
+  const yesterday = dateStr(new Date(y, m - 1, day - 1));
+  if (ds === yesterday) return 'yesterday';
   return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
 }
 
@@ -708,8 +711,9 @@ async function loadDate(ds) {
 document.getElementById('prev-day').addEventListener('click', () => {
   const d = new Date(currentDate + 'T12:00:00');
   d.setDate(d.getDate() - 1);
-  const min = new Date(); min.setDate(min.getDate() - 30);
-  if (d >= min) loadDate(dateStr(d));
+  const [y, m, day] = today.split('-').map(Number);
+  const min = dateStr(new Date(y, m - 1, day - 30));
+  if (dateStr(d) >= min) loadDate(dateStr(d));
 });
 
 document.getElementById('next-day').addEventListener('click', () => {
@@ -736,10 +740,11 @@ async function renderHistory() {
     grid.appendChild(h);
   });
 
-  // Build 30-day list oldest→newest
+  // Build 30-day list oldest→newest, anchored to local today
   const days = [];
   for (let i = 29; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
+    const [y, m, day] = today.split('-').map(Number);
+    const d = new Date(y, m - 1, day - i);
     days.push(d);
   }
 
